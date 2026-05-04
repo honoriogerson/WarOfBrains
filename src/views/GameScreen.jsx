@@ -3,7 +3,7 @@ import { Clock, Trophy, Zap } from 'lucide-react';
 import ObjectTugOfWar from '../components/TugOfWar';
 
 function GameScreen({ config, hostId, engine, onEndGame }) {
-  const { players, broadcast, scores, setScores, setMessageHandler } = engine;
+  const { players, broadcast, scores, setScores, lastMessage } = engine;
 
   const [globalTime, setGlobalTime] = useState(config.timeLimit);
   const [qIndex, setQIndex] = useState(0);
@@ -20,26 +20,27 @@ function GameScreen({ config, hostId, engine, onEndGame }) {
   const qTimerRef = useRef(null);
 
   useEffect(() => {
-    // Set message handler for engine
-    setMessageHandler((conn, data) => {
-      const player = players.find(p => p.conn.peer === conn.peer);
-      if (!player) return;
+    if (!lastMessage) return;
+    const { conn, data } = lastMessage;
+    const player = players.find(p => p.conn?.peer === conn?.peer);
+    if (!player) return;
 
-      if (data.type === 'ANSWER' && qStatus === 'READING') {
-        setAnswersThisRound(prev => ({ ...prev, [conn.peer]: data.answer }));
+    if (data.type === 'ANSWER' && qStatus === 'READING') {
+      setAnswersThisRound(prev => ({ ...prev, [conn.peer]: data.answer }));
+    }
+
+    if (data.type === 'SPEED_ANSWER') {
+      if (data.isCorrect) {
+        setScores(prev => {
+          const newScores = { ...prev, [player.team]: Math.min(100, prev[player.team] + pointsPerQuestion) };
+          checkWinCondition(newScores);
+          return newScores;
+        });
       }
+    }
+  }, [lastMessage]);
 
-      if (data.type === 'SPEED_ANSWER') {
-        if (data.isCorrect) {
-          setScores(prev => {
-            const newScores = { ...prev, [player.team]: Math.min(100, prev[player.team] + pointsPerQuestion) };
-            checkWinCondition(newScores);
-            return newScores;
-          });
-        }
-      }
-    });
-
+  useEffect(() => {
     // Start Global Timer
     globalTimerRef.current = setInterval(() => {
       setGlobalTime(prev => {
@@ -61,7 +62,6 @@ function GameScreen({ config, hostId, engine, onEndGame }) {
     return () => {
       clearInterval(globalTimerRef.current);
       clearInterval(qTimerRef.current);
-      setMessageHandler(null);
     };
   }, []);
 

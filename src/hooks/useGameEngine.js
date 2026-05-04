@@ -6,7 +6,7 @@ export function useGameEngine(isHost, hostPin, initialConfig) {
   const [connections, setConnections] = useState([]);
   const [players, setPlayers] = useState([]); // { id, name, team, conn }
   const [gameState, setGameState] = useState('LOBBY'); // LOBBY, PLAYING, FINISHED
-  const [messageHandler, setMessageHandler] = useState(null);
+  const [lastMessage, setLastMessage] = useState(null);
   
   // Game Data
   const [scores, setScores] = useState({ A: 0, B: 0 });
@@ -66,9 +66,7 @@ export function useGameEngine(isHost, hostPin, initialConfig) {
     }
 
     if (data.type === 'ANSWER' || data.type === 'SPEED_ANSWER') {
-      if (messageHandler) {
-        messageHandler(conn, data);
-      }
+      setLastMessage({ conn, data, timestamp: Date.now() });
     }
   };
 
@@ -89,6 +87,6 @@ export function useGameEngine(isHost, hostPin, initialConfig) {
     setScores,
     gameState,
     setGameState,
-    setMessageHandler,
+    lastMessage,
   };
 }
